@@ -6,8 +6,10 @@ import json
 import time
 from collections import defaultdict
 import sqlite3
-def create_db():
-    conn = sqlite3.connect("db/wiki_stats.db")
+
+
+def create_db(db_name):
+    conn = sqlite3.connect(f"db/{db_name}.db")
     cursor = conn.cursor()
 
     #create db
@@ -19,15 +21,17 @@ def create_db():
             )
 ''')
     conn.commit()
-    print("db created")
     conn.close()
-def main():
+    print("db created or exists")
+
+
+def main(exchange_name, db_name):
     #conncetion
     connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
     channel = connection.channel()
 
     #exchange
-    exchange_name="edit_events"
+    
     channel.exchange_declare(
         exchange=exchange_name,
         exchange_type="fanout"
@@ -50,19 +54,19 @@ def main():
         data =json.loads(body)
         timestamp = data["timestamp"]
         origin = data["wiki"]
-        # Convert timestamp to ISO 8601 format
+        # convert timestamp
         timestamp_iso = datetime.fromtimestamp(int(timestamp)).isoformat()
 
         # Calculate intervals (e.g., per minute) and update aggregations
         interval = int(datetime.fromisoformat(timestamp_iso).timestamp()) // 60
         global_edits[interval]+=1
 
-        #german wiki
+        #check for german wiki
         if "dewiki" in origin.lower():
             german_edits[interval]+=1
 
         #write to db
-        conn = sqlite3.connect('db/wiki_stats.db')
+        conn = sqlite3.connect(f'db/{db_name}.db')
         cursor = conn.cursor()
 
         #insert or update data
@@ -84,14 +88,14 @@ def main():
     #listen
     print("[*] Waiting for messages. To exit press CTRL+C")
     channel.start_consuming()
+    
 
 if __name__=="__main__":
     try:
-        create_db()
-        main()
+        exchange_name="edit_events"
+        db_name = "wiki_stats"
+        create_db(db_name)
+        main(exchange_name, db_name)
     except KeyboardInterrupt:
         print("Interrupted by user")
-        try:
-            sys.exit(0)
-        except SystemExit:
-            os._exit(0)
+        

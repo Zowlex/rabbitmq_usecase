@@ -23,10 +23,10 @@ class TestProducer(unittest.TestCase):
         connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
         channel = connection.channel()
         
-        exchange_name = "edit_events"
+        exchange_name = "test_edit_events"
         channel.exchange_declare(exchange=exchange_name, exchange_type="fanout")
         
-        test_message = {"id": "123", "data": "test"}
+        test_message = {"timestamp": str(int(time.time())), "wiki": "dewiki"}
         message = json.dumps(test_message)
         
         channel.basic_publish(
@@ -35,10 +35,9 @@ class TestProducer(unittest.TestCase):
             body=message
         )
 
-        # Assuming there's a consumer listening, wait a bit to give it time to process
+        #Wait for consumer
         time.sleep(2)
 
-        # You can add more assertions here based on your consumer's expected behavior
 
         connection.close()
 
